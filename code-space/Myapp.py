@@ -1,3 +1,4 @@
+import cProfile
 import re
 import fractions
 import random
@@ -158,7 +159,7 @@ def generate_quiz(num_questions, range_limit):
             ex_file.write(f"{i}. {exercise} = \n")
             ans_file.write(f"{i}. {answer}\n")
 
-
+# 批改答案
 def grade(exercise_file, answer_file):
     with open(exercise_file, "r") as ex_file, open(answer_file, "r") as ans_file:
         exercises = ex_file.readlines()
@@ -212,3 +213,4 @@ def main():
 
 if __name__ == "__main__":
     main()
+    cProfile.run("main()", filename="performance_analysis_result")
