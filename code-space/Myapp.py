@@ -108,10 +108,21 @@ def generate_expression(range_limit):
     subexpressions = [generate_subexpression(range_limit) for _ in range(subexpression_count)]
     operators = ['+', '-', '*', '÷']
 
+    # 避免最终表达式出现四个运算符
+    matches = []
+    for ch in subexpressions:
+        if ch in operators:
+            matches = matches.append(ch)
+
     expression = subexpressions[0]
     current_value = eval_expression(subexpressions[0])  # 计算当前表达式的值
     for i in range(1, subexpression_count):
         op = random.choice(operators)
+        # 记录
+        while len(matches) > 2 & (op not in operators):
+            op = random.choice(operators)
+        if op not in operators:
+            matches.append(op)
 
         next_value = eval_expression(subexpressions[i])
 
