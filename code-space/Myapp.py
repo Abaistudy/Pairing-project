@@ -1,3 +1,4 @@
+import argparse
 import fractions
 import random
 
@@ -136,3 +137,76 @@ def generate_expression(range_limit):
         expression += f" {op} {subexpressions[i]}"
 
     return expression, current_value
+
+
+# 生成题目和答案
+def generate_quiz(num_questions, range_limit):
+    exercises = []
+    answers = []
+
+    for _ in range(num_questions):
+        expression, answer = generate_expression(range_limit)
+        while answer < 0:
+            expression, answer = generate_expression(range_limit)
+        exercises.append(expression)
+        answers.append(fraction_to_mixed(fractions.Fraction(answer).limit_denominator()))
+
+    with open("Exercises.txt", "w") as ex_file, open("Answers.txt", "w") as ans_file:
+        for i, (exercise, answer) in enumerate(zip(exercises, answers), 1):
+            ex_file.write(f"{i}. {exercise} = \n")
+            ans_file.write(f"{i}. {answer}\n")
+
+
+def grade(exercise_file, answer_file):
+    with open(exercise_file, "r") as ex_file, open(answer_file, "r") as ans_file:
+        exercises = ex_file.readlines()
+        answers = ans_file.readlines()
+
+    correct = []
+    wrong = []
+
+    for i, (exercise, answer) in enumerate(zip(exercises, answers), 1):
+        # 去除题目中的编号，获取表达式部分
+        expr = exercise.split('=')[0].strip()  # 去除 = 号后面的内容
+        expr = re.sub(r'^\d+\.\s*', '', expr)  # 去除题目编号 "1. " 等格式
+
+        # 将预期答案转换为标准 Fraction 形式
+        expected_answer = answer.split('.')[1].strip()
+        expected_fraction = mixed_to_fraction(expected_answer)
+
+        # 计算表达式的答案
+        calculated_fraction = fractions.Fraction(eval_expression(expr.replace('÷', '/'))).limit_denominator()
+
+        # 比较计算结果和预期答案，统一比较 Fraction 对象而不是字符串
+        if expected_fraction == calculated_fraction:
+            correct.append(i)
+        else:
+            wrong.append(i)
+
+    with open("Grade.txt", "w") as grade_file:
+        grade_file.write(f"Correct: {len(correct)} ({', '.join(map(str, correct))})\n")
+        grade_file.write(f"Wrong: {len(wrong)} ({', '.join(map(str, wrong))})\n")
+
+
+# 主函数
+def main():
+    parser = argparse.ArgumentParser(description="四则运算题目生成器")
+
+    parser.add_argument("-n", type=int, help="生成题目的个数")
+    parser.add_argument("-r", type=int, help="题目中数值范围")
+    parser.add_argument("-e", type=str, help="题目文件路径")
+    parser.add_argument("-a", type=str, help="答案文件路径")
+
+    args = parser.parse_args()
+
+    if args.n and args.r:
+        generate_quiz(args.n, args.r)
+    elif args.e and args.a:
+        grade(args.e, args.a)
+    else:
+        print("参数错误，请使用 -h 查看帮助信息")
+        exit(1)
+
+
+if __name__ == "__main__":
+    main()
