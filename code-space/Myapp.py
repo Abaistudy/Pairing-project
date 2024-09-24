@@ -86,8 +86,9 @@ def generate_subexpression(range_limit):
             op = '+'
 
         subexpression += f" {op} {fraction_to_mixed(numbers[i])}"
-
-        # 如果有多个运算数，加上括号
+    if eval_expression(subexpression) < 0:
+        subexpression = subexpression.replace('-', '+')
+    # 如果有多个运算数，加上括号
     return f"({subexpression})" if num_count > 1 else subexpression
 
 
