@@ -1,11 +1,10 @@
-import argparse
+import re
 import fractions
 import random
+import argparse
+
 
 # 将带分数的字符串转换为 Fraction
-import re
-
-
 def mixed_to_fraction(mixed_str):
     if "'" in mixed_str:
         whole, frac = mixed_str.split("'")
@@ -38,7 +37,7 @@ def generate_number(range_limit):
     else:
         # 生成真分数
         denominator = random.randint(2, range_limit - 1)  # 确保分母不为1或0
-        numerator = random.randint(1, 9 * denominator - 1)
+        numerator = random.randint(1, 10 * denominator - 1)
         while numerator % denominator == 0:
             numerator = random.randint(1, 9 * denominator - 1)
         return fractions.Fraction(numerator, denominator)
@@ -75,37 +74,20 @@ def generate_subexpression(range_limit):
             return f"({fraction_to_mixed(numbers[0])})"
 
     subexpression = fraction_to_mixed(numbers[0])
-    current_value = numbers[0]  # 追踪当前计算的值
     for i in range(1, num_count):
         op = random.choice(operators)
 
-        # 确保除数不为0
-        if op == '÷':
-            while numbers[i] == 0:
-                numbers[i] = generate_number(range_limit)
-            current_value = current_value / numbers[i]
+        # 避免除0
+        if op == '÷' and numbers[i] == 0:
+            numbers[i] = generate_number(range_limit)
 
-        # 确保减法不会产生负数，考虑前面的乘法或除法优先级
-        elif op == '-':
-            # 计算当前子表达式的值以避免负数
-            right_value = eval_expression(fraction_to_mixed(numbers[i]))
-            if current_value - right_value < 0:
-                numbers[i] = generate_number(range_limit)  # 重新生成一个较小的右操作数
-                right_value = eval_expression(fraction_to_mixed(numbers[i]))  # 更新右操作数的值
-            current_value = current_value - right_value
+        # 避免出现负数，出现时转换为加法
+        if op == '-' and numbers[i] > numbers[i - 1]:
+            op = '+'
 
-        # 如果是乘法
-        elif op == '*':
-            current_value = current_value * numbers[i]
-
-        # 如果是加法
-        elif op == '+':
-            current_value = current_value + numbers[i]
-
-        # 拼接表达式
         subexpression += f" {op} {fraction_to_mixed(numbers[i])}"
 
-    # 只有当子运算式包含两个或更多运算符时才加括号
+        # 如果有多个运算数，加上括号
     return f"({subexpression})" if num_count > 1 else subexpression
 
 
@@ -126,19 +108,20 @@ def generate_expression(range_limit):
     for i in range(1, subexpression_count):
         op = random.choice(operators)
         # 记录
-        while len(matches) > 2 & (op not in operators):
+        while len(matches) > 2 & (op not in matches):
             op = random.choice(operators)
-        if op not in operators:
+        if op not in matches:
             matches.append(op)
 
         next_value = eval_expression(subexpressions[i])
 
-        # 初步确保减法不会导致负数，计算当前值并调整
+        # 确保不会产生负数，出现时转换为加法
         if op == '-':
             if current_value - next_value < 0:
-                subexpressions[i] = generate_subexpression(range_limit)  # 调整右操作数
-                next_value = eval_expression(subexpressions[i])  # 重新计算
-            current_value = current_value - next_value
+                op = '+'
+                current_value = current_value + next_value
+            else:
+                current_value = current_value - next_value
 
         # 其他操作更新当前值
         elif op == '+':
