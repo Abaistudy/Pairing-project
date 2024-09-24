@@ -67,6 +67,13 @@ def generate_subexpression(range_limit):
     numbers = [generate_number(range_limit) for _ in range(num_count)]
     operators = ['+', '-', '*', '÷']
 
+    # 当产生的单运算数是分数时，加上括号，避免出错
+    if num_count == 1:
+        if numbers[0].denominator == 1:
+            return fraction_to_mixed(numbers[0])  # 如果只有一个运算数，不需要括号
+        else:
+            return f"({fraction_to_mixed(numbers[0])})"
+
     subexpression = fraction_to_mixed(numbers[0])
     current_value = numbers[0]  # 追踪当前计算的值
     for i in range(1, num_count):
