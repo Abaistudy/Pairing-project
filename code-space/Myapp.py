@@ -38,9 +38,9 @@ def generate_number(range_limit):
     else:
         # 生成真分数
         denominator = random.randint(2, range_limit - 1)  # 确保分母不为1或0
-        numerator = random.randint(1, 10 * denominator - 1)
+        numerator = random.randint(1, range_limit * denominator - 1)
         while numerator % denominator == 0:
-            numerator = random.randint(1, 9 * denominator - 1)
+            numerator = random.randint(1, range_limit * denominator - 1)
         return fractions.Fraction(numerator, denominator)
 
 
@@ -203,9 +203,13 @@ def main():
     args = parser.parse_args()
 
     if args.n and args.r:
+        print(f"开始生成 {args.n} 道题目，数值范围为 0 到 {args.r}。")
         generate_quiz(args.n, args.r)
+        print("题目生成完成，题目保存到 Exercises.txt ，答案保存到 Answers.txt")
     elif args.e and args.a:
+        print(f"开始批改题目文件：{args.e}，使用答案文件：{args.a}。")
         grade(args.e, args.a)
+        print("批改完成，批改结果已保存到 Grade.txt 文件。")
     else:
         print("参数错误，请使用 -h 查看帮助信息")
         exit(1)
