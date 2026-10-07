@@ -1,0 +1,1095 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>The Cipher of Rishengchang · 晋商票号密押</title>
+<script src="assets/js/tailwind.js"></script>
+<script src="assets/js/vue.global.prod.js"></script>
+<script src="assets/js/gsap.min.js"></script>
+<script>
+tailwind.config = {
+  theme: { extend: {
+    colors: { ink:'#2b2622', paper:'#f3ead7', paperdeep:'#e9dcc0', cinnabar:'#b3261e', gold:'#a8842c' },
+    fontFamily: { kai:['KaiTi','STKaiti','FangSong','serif'], song:['SimSun','Songti SC','serif'] }
+  }}
+}
+</script>
+<style>
+  html,body{height:100%;overflow:hidden;background:#e6dabc;}
+  #app{height:100vh;width:100vw;position:relative;overflow:hidden;}
+  .vertical{writing-mode:vertical-rl;text-orientation:upright;}
+  /* scene art: desaturated to a woodblock-print feel, not a rendered painting */
+  .scene-bg{position:absolute;inset:0;background-size:cover;background-position:center;transform-origin:center;filter:grayscale(.82) sepia(.22) contrast(1.14) brightness(1.03) saturate(.55);opacity:.78;}
+  .paper-overlay{position:absolute;inset:0;background-image:url('assets/img/paper-tex.png');background-size:512px;mix-blend-mode:multiply;opacity:.46;pointer-events:none;}
+  .halftone{position:absolute;inset:0;pointer-events:none;opacity:.14;mix-blend-mode:multiply;background-image:radial-gradient(rgba(43,38,34,.6) .7px, transparent .8px);background-size:5px 5px;}
+  .vignette{position:absolute;inset:0;background:radial-gradient(ellipse at center,transparent 62%,rgba(120,96,58,.28) 100%);pointer-events:none;}
+  .scroll-rod{height:14px;background:linear-gradient(#7a5c30,#4a3420 60%,#7a5c30);border-radius:7px;box-shadow:0 1px 3px rgba(0,0,0,.35);}
+  .scroll-end{width:22px;height:22px;border-radius:50%;background:radial-gradient(circle at 35% 35%,#9a7846,#4a3420);box-shadow:0 1px 3px rgba(0,0,0,.4);}
+  .ticket{background:#f4ead3;border:1px solid #a08a5c;box-shadow:0 2px 6px rgba(70,55,30,.25);position:relative;}
+  .ticket::before{content:'';position:absolute;inset:7px;border:2px solid #7a5c30;pointer-events:none;}
+  .seal{font-family:KaiTi,STKaiti,serif;color:#a3241c;border:3px solid #a3241c;border-radius:0;padding:.32em .28em;line-height:1.05;transform:rotate(-7deg);display:inline-block;text-align:center;background:#f7efdc;user-select:none;}
+  .seal-stamp{position:absolute;font-family:KaiTi,STKaiti,serif;font-weight:bold;color:#a3241c;border:4px solid #a3241c;border-radius:0;line-height:1;padding:.26em .2em;transform:rotate(-13deg);background:rgba(247,239,220,.35);text-align:center;opacity:0;}
+  .slot{width:44px;height:44px;border:2px solid #7a5c30;display:flex;align-items:center;justify-content:center;font-family:KaiTi,serif;font-size:26px;color:#2b2622;background:#f7efdc;cursor:pointer;transition:all .2s;}
+  .slot.active{border-color:#a3241c;box-shadow:inset 0 0 0 1px #a3241c;transform:none;}
+  .slot.wrong{border-color:#a3241c;background:#f2d9d4;animation:shake .4s;}
+  .slot.filled{border-style:solid;border-color:#5c4a2a;background:#f7efdc;}
+  @keyframes shake{0%,100%{transform:translateX(0)}25%{transform:translateX(-5px)}75%{transform:translateX(5px)}}
+  .chip{font-family:KaiTi,serif;font-size:22px;width:46px;height:50px;border:1px solid #7a5c30;border-radius:0;background:#f7efdc;color:#2b2622;display:flex;flex-direction:column;align-items:center;justify-content:center;cursor:pointer;transition:all .15s;position:relative;}
+  .chip:hover{background:#a3241c;color:#f7efdc;transform:none;}
+  .chip .idx{font-size:10px;font-family:sans-serif;color:#7a5c30;}
+  .chip:hover .idx{color:#f3e0c0;}
+  .chip.sel{background:#a3241c;color:#f7efdc;}
+  .btn-vermilion{background:#a3241c;color:#f7efdc;font-family:KaiTi,serif;letter-spacing:.18em;border:1px solid #6b130f;border-radius:0;box-shadow:0 1px 3px rgba(0,0,0,.3);transition:all .18s;}
+  .btn-vermilion:hover{transform:none;background:#8f1d17;box-shadow:none;}
+  .btn-vermilion:disabled{opacity:.45;transform:none;cursor:not-allowed;}
+  .btn-ink{background:#f7efdc;border:1px solid #5c4a2a;border-radius:0;color:#3d3227;font-family:KaiTi,serif;transition:all .18s;}
+  .btn-ink:hover{background:#2b2622;color:#f3ead7;}
+  .dialog-box{background:#f3ead7;border:1px solid #7a5c30;box-shadow:0 2px 8px rgba(70,55,30,.25);position:relative;}
+  .dialog-box::before{content:'';position:absolute;inset:5px;border:1px solid #a08a5c;pointer-events:none;}
+  .ink-title{font-family:KaiTi,STKaiti,serif;color:#2b2622;}
+  .fade-enter-active,.fade-leave-active{transition:opacity .5s, transform .5s;}
+  .fade-enter-from{opacity:0;transform:translateY(20px);}
+  .fade-leave-to{opacity:0;transform:translateY(-20px);}
+  .panel{background:#f3ead7;border:1px solid #7a5c30;box-shadow:0 2px 8px rgba(70,55,30,.22);}
+  .panel::before{content:'';position:absolute;inset:6px;border:1px solid #a08a5c;pointer-events:none;}
+  .master-img{filter:grayscale(.8) sepia(.2) contrast(1.1);border:1px solid #7a5c30;box-shadow:0 2px 6px rgba(70,55,30,.3);}
+  .book-col{writing-mode:vertical-rl;text-orientation:upright;font-family:KaiTi,serif;}
+  .glow-dot{width:32px;height:32px;border-radius:0;display:flex;align-items:center;justify-content:center;font-family:KaiTi,serif;font-size:15px;border:1px solid #7a5c30;color:#5c4a2a;background:#f3ead7;transition:all .3s;}
+  .glow-dot.on{background:#a3241c;color:#f7efdc;border-color:#a3241c;box-shadow:none;}
+  .glow-dot.done{background:#5c4a2a;color:#f3ead7;border-color:#5c4a2a;}
+  .glow-dot.locked{opacity:.4;cursor:not-allowed;}
+  .glow-dot.locked:hover{transform:none;}
+  ::-webkit-scrollbar{width:8px;}::-webkit-scrollbar-thumb{background:#a08a5c;border-radius:4px;}::-webkit-scrollbar-track{background:#e9dcc0;}
+  /* immersive dialogue — xuan-paper panel, not a film letterbox */
+  .dlg-bar{position:absolute;left:0;right:0;bottom:0;padding:18px 26px 24px;background:linear-gradient(to top, rgba(243,234,215,.97) 0%, rgba(243,234,215,.88) 72%, transparent 100%);border-top:1px solid #7a5c30;}
+  .speaker-tag{display:inline-block;font-family:KaiTi,serif;letter-spacing:.25em;padding:1px 12px 1px 14px;border-radius:0;font-size:15px;}
+  .speaker-master{color:#f7efdc;background:#8f1d17;border:1px solid #6b130f;}
+  .speaker-me{color:#f3ead7;background:#4a3b28;border:1px solid #3a2f1d;}
+  .speaker-narr{color:#5c4a2a;background:rgba(122,92,48,.12);border:1px solid #a08a5c;font-style:italic;}
+  .speaker-guest{color:#f3ead7;background:#2f4a3e;border:1px solid #1f352c;}
+  .dlg-cn{color:#2b2622;text-shadow:none;}
+  .dlg-en{color:#6b5a3c;}
+  .caret{display:inline-block;width:2px;height:1em;background:#a3241c;margin-left:3px;vertical-align:-2px;animation:blink .8s steps(2,start) infinite;}
+  @keyframes blink{to{visibility:hidden}}
+  .flicker{position:absolute;inset:0;pointer-events:none;background:radial-gradient(ellipse at 50% 104%, rgba(214,150,60,.16), transparent 62%);mix-blend-mode:multiply;animation:flick .5s steps(2) infinite;}
+  @keyframes flick{0%{opacity:.4}50%{opacity:.8}100%{opacity:.5}}
+  .portrait{position:absolute;right:3%;bottom:0;width:min(34vw,330px);filter:grayscale(.8) sepia(.2) contrast(1.08);opacity:.96;}
+  .choice-btn{font-family:KaiTi,serif;background:#f7efdc;border:1px solid #5c4a2a;color:#3d3227;padding:8px 22px;border-radius:0;font-size:19px;transition:all .18s;}
+  .choice-btn:hover{background:#a3241c;color:#f7efdc;border-color:#6b130f;transform:none;}
+  .actcard{font-family:KaiTi,serif;border:1px solid #7a5c30;background:#f7efdc;color:#3d3227;padding:12px 14px;border-radius:0;text-align:center;transition:all .18s;cursor:pointer;}
+  .actcard.locked{opacity:.38;cursor:not-allowed;}
+  .actcard:hover:not(.locked){background:#a3241c;color:#f7efdc;transform:none;}
+  .actcard.on{border-color:#a3241c;box-shadow:inset 0 0 0 1px #a3241c;}
+  .dot-btn{cursor:pointer;}
+  .dot-btn:hover{transform:none;}
+  /* one universal override: square corners, no glass, no glow — printed-antique feel */
+  .btn-vermilion,.btn-ink,.chip,.choice-btn,.actcard,.slot,.seal,.seal-stamp,.panel,.ticket,.glow-dot,.speaker-tag{border-radius:0!important;}
+</style>
+</head>
+<body>
+<div id="app" class="font-song">
+
+  <!-- ===== global background per act ===== -->
+  <div class="scene-bg" :style="bgStyle" ref="bgEl"></div>
+  <div class="paper-overlay"></div>
+  <div class="halftone"></div>
+  <div class="vignette"></div>
+
+  <!-- ===== top-left vertical title ===== -->
+  <div v-if="act>0" class="absolute top-6 left-6 z-30 flex flex-col items-center gap-2 select-none" data-anim>
+    <div class="vertical ink-title text-2xl tracking-[.3em]">{{ actTitle }}</div>
+    <div class="w-px h-16 bg-ink/30"></div>
+    <div class="text-[10px] tracking-widest text-ink/60" style="writing-mode:vertical-rl">{{ actTitleEn }}</div>
+  </div>
+
+  <!-- ===== progress seals ===== -->
+  <div v-if="phase==='play' && act>1 && act<7" class="absolute bottom-5 left-1/2 -translate-x-1/2 z-30 flex items-center gap-3 bg-paper border border-[#7a5c30] px-5 py-2 shadow-none" data-anim>
+    <template v-for="(s,i) in 7" :key="i">
+      <div class="glow-dot dot-btn" :class="{on: i===act-1, done: i<act-1, locked: i+1>maxAct}"
+           :title="actMeta[i].t + ' · ' + actMeta[i].en"
+           @click="jump(i+1)">{{ ['入','学','开','验','辨','结','思'][i] }}</div>
+      <div v-if="i<6" class="w-4 h-px bg-[#a08a5c]"></div>
+    </template>
+  </div>
+
+  <!-- ===== act nav + cipher book + music buttons ===== -->
+  <div v-if="act>=1 && act<8" class="absolute top-5 right-5 z-40 flex flex-col gap-2 items-end" data-anim>
+    <button @click="toggleBgm" class="btn-ink px-4 py-2 text-base">{{ bgmOn ? '♪ 樂 · On' : '♪ 樂 · Off' }}</button>
+    <button v-if="phase==='play' && act>=2 && act<=6" @click="bookOpen=true" class="btn-vermilion px-4 py-2 text-lg">📖 口诀册 <span class="text-xs opacity-80">Book</span></button>
+    <button @click="actMenuOpen=true" class="btn-ink px-4 py-2 text-base">▤ 幕表 · Acts</button>
+  </div>
+
+  <!-- ============ ACT 0 : COVER ============ -->
+  <div v-if="act===0" class="absolute inset-0 z-20 flex items-center justify-center">
+    <div ref="scrollWrap" style="clip-path:inset(0% 50% 0% 50%)" class="relative w-[min(88vw,980px)]">
+      <div class="scroll-rod flex justify-between items-center px-1">
+        <div class="scroll-end"></div><div class="scroll-end"></div>
+      </div>
+      <div class="relative bg-[#f3ead7] border-x-2 border-[#8a6a3b] px-8 py-5 md:px-16 md:py-9 overflow-hidden"
+           style="background-image:linear-gradient(#f7efdc,#eadcbd)">
+        <div class="absolute inset-0" style="background-image:url('assets/img/paper-tex.png');background-size:512px;mix-blend-mode:multiply;opacity:.25;"></div>
+        <!-- vertical title -->
+        <div class="relative flex justify-center gap-6 md:gap-12">
+          <div class="vertical ink-title text-4xl md:text-6xl tracking-[.25em]" style="text-shadow:0 2px 3px rgba(90,70,40,.3)">晋商票号密押</div>
+          <div class="vertical text-ink/70 text-lg md:text-2xl tracking-[.4em] mt-2">道光二十四年 · 平遥城</div>
+          <div class="flex flex-col justify-between items-center py-1">
+            <div ref="coverSeal" class="seal text-xl md:text-2xl opacity-0">日昇昌<br>記</div>
+            <div class="vertical text-ink/50 text-xs md:text-sm tracking-[.3em]">匯通天下</div>
+          </div>
+        </div>
+        <div ref="coverSub" class="relative mt-4 md:mt-6 text-center opacity-0">
+          <p class="text-ink/80 text-base md:text-xl font-serif italic">The Cipher of the Shanxi Banks — an interactive mystery</p>
+          <p class="text-ink/50 text-xs md:text-sm mt-1">A Digital Studies of Chinese Culture project · 数字人文课堂演示</p>
+          <button @click="startGame" class="btn-vermilion mt-3 md:mt-5 rounded px-10 py-2.5 md:py-3 text-xl md:text-2xl tracking-[.4em]">入 號 <span class="text-sm tracking-normal">· Begin</span></button>
+        </div>
+      </div>
+      <div class="scroll-rod flex justify-between items-center px-1">
+        <div class="scroll-end"></div><div class="scroll-end"></div>
+      </div>
+    </div>
+  </div>
+
+  <!-- ============ DIALOGUE LAYER (prologue for every act) ============ -->
+  <div v-else-if="phase==='dialog'" class="absolute inset-0 z-20 overflow-hidden select-none cursor-pointer" @click="onDialogClick">
+    <div class="flicker"></div>
+
+    <!-- master portrait when he speaks -->
+    <transition name="fade">
+      <img v-if="curLine.who==='大掌柜'" src="assets/img/master.png" class="portrait" alt="Master">
+    </transition>
+
+    <!-- scene label -->
+    <div class="absolute top-6 left-1/2 -translate-x-1/2 text-[#5c4a2a] text-xs tracking-[.45em] font-kai whitespace-nowrap">{{ sceneLabel }}</div>
+
+    <!-- dialogue bar -->
+    <div class="dlg-bar">
+      <div class="max-w-4xl mx-auto">
+        <div class="mb-3">
+          <span class="speaker-tag" :class="tagClass(curLine.who)">{{ tagText(curLine.who) }}</span>
+        </div>
+        <p class="dlg-cn font-kai text-2xl md:text-3xl leading-relaxed tracking-wide">
+          {{ shown }}<span v-if="!typingDone" class="caret"></span>
+        </p>
+        <transition name="fade">
+          <p v-if="typingDone" class="dlg-en text-sm md:text-base mt-2 italic">{{ curLine.en }}</p>
+        </transition>
+
+        <!-- player choice -->
+        <div v-if="typingDone && curLine.choice" class="mt-5 flex flex-wrap gap-3" @click.stop>
+          <button v-for="(c,i) in curLine.choice" :key="i" class="choice-btn" @click="chooseIntro(c)">{{ c.label }}</button>
+        </div>
+
+        <!-- continue hint -->
+        <div v-if="typingDone && !curLine.choice" class="mt-5 text-xs tracking-[.3em] text-[#7a6a48]/70">
+          {{ dlgIdx < dlgLines.length-1 ? '▸ 點擊繼續 · Click to continue' : (act===1 ? '▸ 點擊拜師 · Click to take the oath' : '▸ 點擊開始 · Click to begin') }}
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- ============ ACT 2 : LEARN + QUIZ ============ -->
+  <div v-else-if="act===2 && phase===&#39;play&#39;" class="absolute inset-0 z-20 overflow-y-auto flex items-start justify-center p-5">
+    <div class="max-w-4xl w-full grid md:grid-cols-[220px_1fr] gap-6 items-stretch py-3">
+      <div class="hidden md:flex flex-col items-center" data-anim>
+        <img src="assets/img/master.png" class="w-full rounded master-img" alt="Master">
+        <div class="mt-2 vertical text-ink/60 text-sm tracking-[.3em]">大掌柜亲授</div>
+      </div>
+      <div class="panel p-6 md:p-8" data-anim>
+        <h2 class="font-kai text-2xl text-cinnabar mb-1">學藝 · Learning the Rhymes</h2>
+        <p class="text-ink/70 text-sm mb-4 italic">Four secret rhymes turn dates and sums into cipher characters.</p>
+
+        <!-- poem display -->
+        <div class="grid grid-cols-2 lg:grid-cols-4 gap-3 mb-6">
+          <div v-for="(p,k) in poemList" :key="k" class="border border-[#a08a5c] rounded bg-[#fbf5e4]/70 p-2">
+            <div class="text-xs text-cinnabar font-bold mb-1">{{ p.en }} <span class="font-kai">{{ p.cn }}</span></div>
+            <div class="flex flex-wrap gap-1">
+              <div v-for="(c,i) in p.chars" :key="i"
+                   class="w-9 h-10 flex flex-col items-center justify-center rounded border border-[#c9b78f] bg-paper text-ink font-kai text-xl cursor-default"
+                   :class="{'!bg-cinnabar !text-paper': highlight(k,i)}">
+                <span class="leading-none">{{ c }}</span><span class="text-[10px] leading-none opacity-60">{{ i+1 }}</span>
+              </div>
+            </div>
+          </div>
+        </div>
+
+        <!-- quiz -->
+        <div v-if="quiz" class="border-t border-[#a08a5c] pt-4">
+          <div class="flex items-baseline justify-between mb-3">
+            <p class="text-lg text-ink"><span class="font-kai text-cinnabar text-xl">考問 {{ quizIdx+1 }}/3 · </span>{{ quiz[quizIdx].q }}</p>
+            <span class="text-xs text-ink/50">answered correctly: {{ quizPassed }}/3</span>
+          </div>
+          <div class="flex flex-wrap gap-3">
+            <button v-for="(o,i) in quiz[quizIdx].options" :key="i"
+              @click="answerQuiz(o)"
+              class="font-kai text-3xl w-14 h-14 rounded border-2 transition-all"
+              :class="quizChoice===null ? 'border-[#a08a5c] bg-paper text-ink hover:scale-110 hover:border-cinnabar' :
+                     (o===quiz[quizIdx].a ? 'border-green-800 bg-green-100 text-green-900' : 'border-cinnabar bg-red-100 text-cinnabar')">
+              {{ o }}
+            </button>
+          </div>
+          <p v-if="quizFeedback" class="mt-3 font-kai text-lg" :class="quizFeedback.ok?'text-green-800':'text-cinnabar'">
+            {{ quizFeedback.ok ? '正是！Correct.' : '差矣…再想想。Look it up in the book.' }}
+          </p>
+          <button v-if="quizPassed===3" @click="go(3)" class="btn-vermilion mt-4 rounded px-8 py-2.5 text-lg tracking-[.2em]">
+            上櫃 · To the Counter
+          </button>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- ============ ACT 3 : WRITE THE TICKET ============ -->
+  <div v-else-if="act===3 && phase===&#39;play&#39;" class="absolute inset-0 z-20 overflow-y-auto flex items-start justify-center p-5">
+    <div class="max-w-5xl w-full grid lg:grid-cols-[1fr_380px] gap-6 items-center">
+      <!-- order -->
+      <div class="panel p-6 md:p-8 order-2 lg:order-1" data-anim>
+        <h2 class="font-kai text-2xl text-cinnabar mb-1">開票 · Writing the Draft</h2>
+        <p class="text-ink/70 text-sm mb-4 italic">Fill the cipher slots on the draft. Click a character from the palette below.</p>
+        <div class="border border-[#a08a5c] rounded bg-[#fbf5e4]/70 p-4 mb-4">
+          <p class="font-kai text-xl text-ink leading-relaxed">
+            <span class="text-cinnabar">王掌柜：</span>「小號替客汇银 —— {{ cn(order.m) }}月{{ cn(order.d) }}日，汇纹银
+            {{ cn(order.th) }}千{{ cn(order.h) }}百两，由平遥汇至京师。」</p>
+          <p class="text-ink/60 text-sm mt-2">Merchant Wang: "Issue a draft dated month {{ order.m }}, day {{ order.d }},
+             for {{ order.amount }} taels of silver, Pingyao → Beijing."</p>
+        </div>
+
+        <!-- slots -->
+        <div class="flex items-center gap-2 flex-wrap mb-2">
+          <template v-for="(s,i) in slots" :key="i">
+            <div class="flex flex-col items-center">
+              <span class="text-[10px] text-ink/50 mb-1">{{ s.label }}</span>
+              <div class="slot" :class="{active: activeSlot===i && !validated, wrong: wrongSlots.includes(i), filled: values[i]}"
+                   @click="clearSlot(i)">{{ values[i] || '' }}</div>
+            </div>
+            <span v-if="i===0 || i===1 || i===3 || i===5" class="text-ink/30 self-center mt-4">·</span>
+          </template>
+        </div>
+        <p class="text-xs text-ink/50 mb-3">Cipher reads top-to-bottom: month char · day char · amount chars. Click a filled slot to clear it.</p>
+
+        <!-- palette -->
+        <div v-if="!validated" class="border-t border-[#a08a5c] pt-3">
+          <p class="text-sm text-ink/70 mb-2">
+            Choose the <b class="text-cinnabar">{{ slots[activeSlot]?.label }}</b> character
+            <span class="text-xs text-ink/50">({{ slots[activeSlot]?.hint }})</span>:
+          </p>
+          <div class="flex flex-wrap gap-2">
+            <div v-for="(c,i) in palette" :key="i" class="chip" @click="pickChar(c)">
+              <span>{{ c }}</span><span class="idx">{{ paletteIdx(i) }}</span>
+            </div>
+          </div>
+          <div class="mt-4 flex gap-3">
+            <button @click="submitTicket" :disabled="values.some(v=>!v)" class="btn-vermilion rounded px-8 py-2.5 text-lg tracking-[.2em]">
+              呈掌柜驗看 · Submit
+            </button>
+            <button @click="bookOpen=true" class="btn-ink rounded px-5 py-2.5">翻口诀册 · Book</button>
+          </div>
+        </div>
+        <div v-else class="border-t border-[#a08a5c] pt-4">
+          <p class="font-kai text-xl text-green-800">掌柜颔首：「分毫不差。用印！」</p>
+          <p class="text-ink/60 text-sm mt-1 mb-3">The master nods — "Not a digit off. Stamp it." The draft is now a bearer instrument worth {{ order.amount }} taels.</p>
+          <button @click="go(4)" class="btn-vermilion rounded px-8 py-2.5 text-lg tracking-[.2em]">送往京師 · Send to Beijing</button>
+        </div>
+      </div>
+
+      <!-- ticket -->
+      <div class="order-1 lg:order-2">
+        <div class="ticket relative mx-auto flex flex-col" style="width:340px;height:480px;" data-anim>
+          <div class="text-center font-kai text-xl tracking-[.35em] text-ink/80 pt-4 pb-2 mx-8 border-b border-[#a08a5c]">日昇昌 · 匯票</div>
+          <div class="flex-1 flex flex-col items-center justify-center gap-4 px-14">
+            <div class="font-kai text-3xl text-ink/90 tracking-[.15em]">{{ cn(order.m) }}月{{ cn(order.d) }}日</div>
+            <div class="font-kai text-2xl text-ink/90">匯紋銀 {{ cn(order.th) }}千{{ cn(order.h) }}百兩</div>
+            <div class="text-[10px] text-ink/50 italic">Pingyao → Beijing · payable to bearer</div>
+            <div class="text-sm text-cinnabar font-kai tracking-[.3em]">見票即付</div>
+          </div>
+          <!-- cipher column -->
+          <div class="absolute top-16 right-3 flex flex-col gap-1.5">
+            <span class="text-[10px] text-cinnabar text-center font-kai">密押</span>
+            <div v-for="(v,i) in values" :key="i" class="w-9 h-9 flex items-center justify-center font-kai text-2xl border border-dashed border-[#8a6a3b] bg-[#fbf5e4]/80"
+                 :class="{'border-solid border-cinnabar text-cinnabar scale-110': validated && !wrongSlots.length}">{{ v }}</div>
+          </div>
+          <div ref="stampA" class="seal-stamp text-3xl" style="bottom:26px;left:26px;">票號<br>之印</div>
+          <div v-if="!validated" class="absolute bottom-6 right-6 text-[10px] text-ink/40 italic">awaiting cipher…</div>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- ============ ACT 4 : CASH THE DRAFT ============ -->
+  <div v-else-if="act===4 && phase===&#39;play&#39;" class="absolute inset-0 z-20 overflow-y-auto flex items-start justify-center p-5">
+    <div class="max-w-5xl w-full grid lg:grid-cols-[380px_1fr] gap-6 items-center">
+      <!-- ticket (Beijing) -->
+      <div>
+        <div class="ticket relative mx-auto flex flex-col" style="width:340px;height:460px;" data-anim>
+          <div class="text-center font-kai text-xl tracking-[.35em] text-ink/80 pt-4 pb-2 mx-8 border-b border-[#a08a5c]">京師分號 · 兌票</div>
+          <div class="flex-1 flex flex-col items-center justify-center gap-3 px-14">
+            <div class="font-kai text-lg text-ink/80">持票人：張客商</div>
+            <div class="text-[10px] text-ink/50">Bearer: Merchant Zhang</div>
+            <div class="font-kai text-2xl text-cinnabar tracking-[.2em]">見票即付</div>
+            <div class="text-xs text-ink/60 font-kai">「{{ decode.claim.cn }}」</div>
+            <div class="text-[10px] text-ink/45 italic text-center leading-tight max-w-[200px]">Zhang claims this sum — the cipher column is the only proof</div>
+          </div>
+          <div class="absolute top-16 right-3 flex flex-col gap-1.5">
+            <span class="text-[10px] text-cinnabar text-center font-kai">密押</span>
+            <div v-for="(v,i) in decode.cipher" :key="i" class="w-9 h-9 flex items-center justify-center font-kai text-2xl border border-solid border-[#8a6a3b] bg-[#fbf5e4]/80">{{ v }}</div>
+          </div>
+          <div ref="stampB" class="seal-stamp text-3xl" style="bottom:26px;left:26px;">兌訖</div>
+        </div>
+      </div>
+
+      <!-- decode panel -->
+      <div class="panel p-6 md:p-8" data-anim>
+        <h2 class="font-kai text-2xl text-cinnabar mb-1">驗票 · Verifying the Draft</h2>
+        <p class="text-ink/70 text-sm mb-4 italic">Beijing branch, a month later. Decode the cipher column: what does it actually say?</p>
+
+        <div class="space-y-5">
+          <div>
+            <p class="text-ink mb-2">1. The first character <b class="font-kai text-2xl text-cinnabar">{{ decode.cipher[0] }}</b> encodes the month:</p>
+            <div class="flex flex-wrap gap-2">
+              <button v-for="(o,i) in decode.qMonth" :key="i" @click="decode.m=o" class="font-kai text-xl px-4 py-1.5 rounded border-2 transition-all"
+                :class="decode.m===o ? 'border-cinnabar bg-cinnabar text-paper' : 'border-[#a08a5c] bg-paper text-ink hover:border-cinnabar'">{{ o }}</button>
+            </div>
+          </div>
+          <div>
+            <p class="text-ink mb-2">2. The second character <b class="font-kai text-2xl text-cinnabar">{{ decode.cipher[1] }}</b> encodes the day:</p>
+            <div class="flex flex-wrap gap-2">
+              <button v-for="(o,i) in decode.qDay" :key="i" @click="decode.d=o" class="font-kai text-xl px-4 py-1.5 rounded border-2 transition-all"
+                :class="decode.d===o ? 'border-cinnabar bg-cinnabar text-paper' : 'border-[#a08a5c] bg-paper text-ink hover:border-cinnabar'">{{ o }}</button>
+            </div>
+          </div>
+          <div>
+            <p class="text-ink mb-2">3. The remaining four characters <b class="font-kai text-2xl text-cinnabar tracking-widest">{{ decode.cipher.slice(2).join('') }}</b> encode the sum:</p>
+            <div class="flex flex-wrap gap-2">
+              <button v-for="(o,i) in decode.qAmt" :key="i" @click="decode.amt=o" class="text-lg px-4 py-1.5 rounded border-2 transition-all"
+                :class="decode.amt===o ? 'border-cinnabar bg-cinnabar text-paper' : 'border-[#a08a5c] bg-paper text-ink hover:border-cinnabar'">{{ o }}</button>
+            </div>
+          </div>
+          <p v-if="decodeMsg" class="font-kai text-lg" :class="decodeOk?'text-green-800':'text-cinnabar'">{{ decodeMsg }}</p>
+          <div v-if="!decodeOk" class="flex gap-3">
+            <button @click="checkDecode" :disabled="!decode.m||!decode.d||!decode.amt" class="btn-vermilion rounded px-8 py-2.5 text-lg tracking-[.2em]">
+              兌銀 · Pay Out
+            </button>
+            <button @click="bookOpen=true" class="btn-ink rounded px-5 py-2.5">口诀册 · Book</button>
+          </div>
+          <div v-else class="flex gap-3 items-center" data-anim>
+            <button @click="go(5)" class="btn-vermilion rounded px-8 py-2.5 text-lg tracking-[.2em]">
+              連夜送客 · Next
+            </button>
+            <span class="text-xs text-ink/50 italic">The silver is paid. A long day is ending — but not yet…</span>
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- ============ ACT 5 : SPOT THE FORGERY ============ -->
+  <div v-else-if="act===5 && phase===&#39;play&#39;" class="absolute inset-0 z-20 overflow-y-auto flex items-start justify-center p-5">
+    <div class="max-w-5xl w-full grid lg:grid-cols-[380px_1fr] gap-6 items-center">
+      <!-- forged ticket -->
+      <div>
+        <div class="ticket relative mx-auto flex flex-col" style="width:340px;height:460px;" data-anim>
+          <div class="text-center font-kai text-xl tracking-[.35em] text-ink/80 pt-4 pb-2 mx-8 border-b border-[#a08a5c]">夜叩 · 疑票</div>
+          <div class="flex-1 flex flex-col items-center justify-center gap-3 px-14">
+            <div class="font-kai text-lg text-ink/80">持票人：陌生客</div>
+            <div class="text-[10px] text-ink/50">a nervous stranger, demanding silver at closing time</div>
+            <div class="font-kai text-xl text-ink/70 tracking-[.3em]">票面所書</div>
+            <div class="font-kai text-3xl text-cinnabar">{{ forge.claim.cn }}</div>
+            <div class="text-[10px] text-ink/50 italic">plain text claims {{ forge.claim.en }}</div>
+          </div>
+          <div class="absolute top-16 right-3 flex flex-col gap-1.5">
+            <span class="text-[10px] text-cinnabar text-center font-kai">密押</span>
+            <div v-for="(v,i) in forge.cipher" :key="i" class="w-9 h-9 flex items-center justify-center font-kai text-2xl border border-solid border-[#8a6a3b] bg-[#fbf5e4]/80"
+              :class="{'!border-cinnabar !text-cinnabar': forgeExposed}">{{ v }}</div>
+          </div>
+          <div ref="stampC" class="seal-stamp text-4xl" style="bottom:24px;left:24px;">偽</div>
+        </div>
+      </div>
+
+      <!-- investigation -->
+      <div class="panel p-6 md:p-8" data-anim>
+        <h2 class="font-kai text-2xl text-cinnabar mb-1">辨偽 · Catching the Forger</h2>
+        <p class="text-ink/70 text-sm mb-4 italic">Closing time, oil lamps low. A stranger slaps a draft on the counter demanding silver <b>now</b>. Decode his cipher column.</p>
+
+        <template v-if="!forgeExposed">
+          <div class="mb-5">
+            <p class="text-ink mb-2">The cipher <b class="font-kai text-2xl text-cinnabar tracking-widest">{{ forge.cipher.join('') }}</b> actually encodes the sum:</p>
+            <div class="flex flex-wrap gap-2">
+              <button v-for="(o,i) in forge.qAmt" :key="i" @click="forge.guess=o" class="text-lg px-4 py-1.5 rounded border-2 transition-all"
+                :class="forge.guess===o ? 'border-cinnabar bg-cinnabar text-paper' : 'border-[#a08a5c] bg-paper text-ink hover:border-cinnabar'">{{ o }}</button>
+            </div>
+          </div>
+          <p v-if="forgeMsg" class="font-kai text-lg mb-4" :class="forgeOk?'text-green-800':'text-cinnabar'">{{ forgeMsg }}</p>
+          <button v-if="forgeOk" @click="exposeForge" class="btn-vermilion rounded px-8 py-2.5 text-lg tracking-[.2em]">
+            揭穿 · Expose Him
+          </button>
+        </template>
+
+        <template v-else>
+          <div data-anim>
+            <p class="font-kai text-lg text-ink leading-8">
+              掌柜烛下一照，冷笑道：「票面写 {{ forge.claim.cn }}，密押却是 {{ forge.actual.cn }}——
+              <span class="text-cinnabar">涂改票面，密押不合，伪票也！</span>」</p>
+            <p class="text-ink/70 text-sm mt-3 leading-relaxed">
+              The cipher says <b>{{ forge.actual.en }}</b>, but the plain text was scraped and rewritten to <b>{{ forge.claim.en }}</b>.
+              The stranger bolted for the door — the night watchmen were already waiting.
+              <b class="text-cinnabar">Tamper the message, break the code — exactly how a modern signature catches tampering.</b>
+            </p>
+            <div class="mt-4 border border-[#a08a5c] rounded bg-[#fbf5e4]/70 p-3">
+              <p class="text-sm text-ink/70 italic">Master's whisper: "The rhymes are changed every few years — new key, old codes retired." (Key rotation, 1840s edition.)</p>
+            </div>
+            <button @click="go(6)" class="btn-vermilion mt-5 rounded px-8 py-2.5 text-lg tracking-[.2em]">升櫃 · Graduation</button>
+          </div>
+        </template>
+      </div>
+    </div>
+  </div>
+
+  <!-- ============ ACT 6 : GRADUATION ============ -->
+  <div v-else-if="act===6 && phase===&#39;play&#39;" class="absolute inset-0 z-20 flex items-center justify-center p-6">
+    <div class="max-w-3xl w-full grid md:grid-cols-[240px_1fr] gap-8 items-center">
+      <div class="hidden md:flex flex-col items-center gap-3" data-anim>
+        <img src="assets/img/master.png" class="w-full rounded master-img" alt="Master">
+        <div class="vertical text-ink/60 text-sm tracking-[.3em]">三年學徒 · 今升櫃身</div>
+      </div>
+      <div class="panel p-8" data-anim>
+        <h2 class="font-kai text-2xl text-cinnabar mb-2">結業 · Passing the Trade</h2>
+        <p class="text-ink/70 text-sm mb-5 italic">Three years of grinding ink, and the master grants you a seal of your own. A seal is a signature — and yours is now bound to every draft you write.</p>
+
+        <div v-if="!gradStamped" class="flex flex-col gap-4">
+          <label class="text-ink">Your name 落款 <span class="text-xs text-ink/50">(up to 4 chars)</span>:
+            <input v-model="playerName" maxlength="4" placeholder="学徒"
+              class="mt-1 block w-48 font-kai text-2xl px-3 py-2 border-2 border-[#a08a5c] rounded bg-paper text-ink focus:outline-none focus:border-cinnabar">
+          </label>
+          <!-- certificate -->
+          <div class="ticket relative p-6 mx-auto" style="width:300px;height:190px;">
+            <div class="font-kai text-xl text-ink/80 leading-8">
+              茲有 <b class="text-cinnabar">{{ playerName || '　' }}</b> 熟習密押<br>准升櫃身 · 日昇昌記
+            </div>
+            <div ref="stampD" class="seal-stamp text-2xl" style="bottom:14px;right:16px;">{{ (playerName||'學徒').slice(0,2) }}<br>之印</div>
+          </div>
+          <button @click="doGraduate" class="btn-vermilion self-start rounded px-8 py-2.5 text-lg tracking-[.2em]">用印 · Stamp Your Seal</button>
+        </div>
+
+        <div v-else data-anim>
+          <div class="flex items-center gap-6 mb-4">
+            <div class="seal text-3xl">{{ (playerName||'學徒') }}<br>之印</div>
+            <p class="font-kai text-lg text-ink leading-8">從今往後，你的密押便是你的信義。<br>
+              <span class="text-sm text-ink/60 italic">From today, your cipher is your credit.</span></p>
+          </div>
+          <button @click="go(7)" class="btn-vermilion rounded px-8 py-2.5 text-lg tracking-[.2em]">尾聲 · Epilogue</button>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- ============ ACT 7 : EPILOGUE ============ -->
+  <div v-else-if="act===7 && phase===&#39;play&#39;" class="absolute inset-0 z-20 overflow-y-auto flex items-start justify-center p-6">
+    <div class="max-w-4xl w-full py-8">
+      <div class="text-center mb-8" data-anim>
+        <div class="inline-block bg-[#f3ead7]/95 border border-[#7a5c30] px-8 md:px-12 py-4">
+          <h1 class="font-kai text-4xl md:text-5xl text-cinnabar tracking-[.2em]">兩百年前的加密簽名</h1>
+          <p class="text-lg text-ink/75 italic mt-2">A cryptographic signature, two centuries early</p>
+        </div>
+      </div>
+
+      <div class="grid md:grid-cols-2 gap-5 mb-8">
+        <div class="panel p-6" data-anim>
+          <h3 class="font-kai text-xl text-cinnabar mb-3">票號 · 1844</h3>
+          <ul class="space-y-2 text-ink/80 text-sm leading-relaxed list-none">
+            <li>🧠 <b>Secret rhyme</b> memorized by apprentices — <span class="font-kai">「謹防假票冒取勿忘細視書章」</span> = the <b>key</b></li>
+            <li> ✍️ Cipher characters binding date + sum — the <b>MAC / signature</b></li>
+            <li>🏦 Any branch, no telegraph needed — <b>distributed verification</b></li>
+            <li>🔁 Rhymes rotated every few years — <b>key rotation</b></li>
+          </ul>
+        </div>
+        <div class="panel p-6" data-anim>
+          <h3 class="font-kai text-xl text-ink mb-3">Internet · Today</h3>
+          <ul class="space-y-2 text-ink/80 text-sm leading-relaxed list-none">
+            <li>🔑 Shared secret key known only to sender &amp; receiver</li>
+            <li>🔏 HMAC / digital signature binds message content</li>
+            <li>🌍 Any server verifies without calling home</li>
+            <li>⏳ Keys expire and are replaced on schedule</li>
+          </ul>
+        </div>
+      </div>
+
+      <div class="panel p-6 mb-8" data-anim>
+        <p class="text-lg text-ink leading-relaxed text-center font-serif italic">
+          "Hui tong tian xia — remittances flow across the empire." Shanxi merchants ran a trust network
+          over 51 cities with paper, ink, and a 56-character rhyme —
+          <b class="text-cinnabar">a handwritten message-authentication code, two hundred years before digital signatures existed.</b>
+        </p>
+      </div>
+
+      <div class="text-center text-ink/60 text-xs leading-relaxed" data-anim>
+        <p>Historical basis: cipher rhymes of Rishengchang 日昇昌 (est. 1823, Pingyao, Shanxi), the first Chinese draft bank (piaohao).</p>
+        <p class="mt-1">Scenes illustrated with AI-generated ink-wash art · built with Vue 3 + Tailwind + GSAP · for classroom demonstration.</p>
+        <button @click="restart" class="btn-vermilion mt-6 rounded px-8 py-2.5 text-lg tracking-[.2em]">再入票號 · Replay</button>
+      </div>
+    </div>
+  </div>
+
+  <!-- ===== act menu overlay ===== -->
+  <transition name="fade">
+    <div v-if="actMenuOpen" class="absolute inset-0 z-50 bg-black/60 backdrop-blur-sm flex items-center justify-center p-5" @click.self="actMenuOpen=false">
+      <div class="panel p-6 md:p-8 max-w-3xl w-full" data-anim>
+        <div class="flex items-center justify-between mb-5">
+          <h3 class="font-kai text-2xl text-cinnabar">幕表 · The Seven Acts</h3>
+          <button @click="actMenuOpen=false" class="btn-ink rounded px-4 py-1.5">闔上 · Close</button>
+        </div>
+        <div class="grid grid-cols-2 md:grid-cols-4 gap-3">
+          <div v-for="(a,i) in actMeta" :key="i"
+               class="actcard" :class="{on: i+1===act, locked: i+1>maxAct}"
+               @click="jump(i+1)">
+            <div class="text-xs text-cinnabar mb-1">{{ ['入','学','开','验','辨','结','思'][i] }}</div>
+            <div class="text-lg">{{ a.t }}</div>
+            <div class="text-[10px] opacity-70">{{ a.en }}</div>
+          </div>
+        </div>
+        <p class="text-xs text-ink/50 mt-4 italic">灰暗的幕尚未解鎖——順著劇情走下去即可。Locked acts unlock as you play.</p>
+      </div>
+    </div>
+  </transition>
+
+  <!-- ===== cipher book overlay ===== -->
+  <transition name="fade">
+    <div v-if="bookOpen" class="absolute inset-0 z-50 bg-black/60 backdrop-blur-sm flex items-center justify-center p-5" @click.self="bookOpen=false">
+      <div class="panel p-6 md:p-8 max-w-3xl w-full max-h-[85vh] overflow-y-auto" data-anim>
+        <div class="flex items-center justify-between mb-4">
+          <h3 class="font-kai text-2xl text-cinnabar">口訣冊 · The Cipher Book</h3>
+          <button @click="bookOpen=false" class="btn-ink rounded px-4 py-1.5">闔上 · Close</button>
+        </div>
+        <div class="grid md:grid-cols-2 gap-4">
+          <div v-for="p in poemList" :key="p.key" class="border border-[#a08a5c] rounded bg-[#fbf5e4]/70 p-3">
+            <div class="text-sm font-bold text-cinnabar mb-2">{{ p.en }} <span class="font-kai">{{ p.cn }}</span> <span class="text-ink/50 font-normal text-xs">{{ p.sub }}</span></div>
+            <div class="flex flex-wrap gap-2">
+              <div v-for="(c,i) in p.chars" :key="i" class="chip !w-12 !h-14 !text-xl">
+                <span>{{ c }}</span><span class="idx">{{ p.vals[i] }}</span>
+              </div>
+            </div>
+          </div>
+        </div>
+        <p class="text-xs text-ink/50 mt-4 italic">Unit rhyme maps 国→10,000 · 宝→1,000 · 流→100 · 通→10. Amounts are written digit-by-digit with unit characters interleaved: 1,200 taels = 一千二百 = 生宝客流.</p>
+      </div>
+    </div>
+  </transition>
+</div>
+
+<script>
+const { createApp } = Vue;
+
+const P_MONTH = '谨防假票冒取勿忘细视书章';
+const P_DAY   = '堪笑世情薄天道最公平昧心图自利阴谋害他人善恶终有报到头必分明';
+const P_NUM   = '生客多察看斟酌而后行';
+const P_UNIT  = '国宝流通';
+const CN = ['一','二','三','四','五','六','七','八','九'];
+
+let AC = null;
+function tone(f, d, t='sine', v=0.15, delay=0){
+  try{
+    AC = AC || new (window.AudioContext||window.webkitAudioContext)();
+    const o = AC.createOscillator(), g = AC.createGain();
+    o.type = t; o.frequency.value = f;
+    g.gain.setValueAtTime(v, AC.currentTime + delay);
+    g.gain.exponentialRampToValueAtTime(0.001, AC.currentTime + delay + d);
+    o.connect(g); g.connect(AC.destination);
+    o.start(AC.currentTime + delay); o.stop(AC.currentTime + delay + d);
+  }catch(e){}
+}
+const sndStamp = () => { tone(85,.35,'triangle',.5); tone(55,.45,'sine',.35,.03); };
+const sndOk    = () => { tone(523,.15,'sine',.18); tone(784,.25,'sine',.18,.12); };
+const sndErr   = () => { tone(170,.25,'sawtooth',.07); };
+const sndPage  = () => { tone(660,.08,'sine',.06); };
+
+/* ---------- 古风氛围背景音乐：五声音阶 + 古筝拨弦 + 埙长音 drone ---------- */
+const FREQ = {
+  C3:130.81, D3:146.83, E3:164.81, G3:196.00, A3:220.00,
+  C4:261.63, D4:293.66, E4:329.63, G4:392.00, A4:440.00,
+  C5:523.25, D5:587.33, E5:659.25, G5:783.99, A5:880.00,
+};
+// 五声 C 宫舒缓旋律（'-' 为休止），循环
+const MELODY = ['C4','E4','G4','E4','A4','G4','E4','D4','C4','D4','E4','G4','E4','D4','C4','-'];
+const BASS   = ['C3','-','G3','-','A3','-','G3','-','C3','-','G3','-','D3','-','C3','-'];
+
+const BGM = {
+  ctx:null, master:null, on:false, timer:null, step:0, stepDur:0.85,
+  start(){
+    if(this.on) return;
+    this.on = true;
+    if(!AC){ try{ AC = new (window.AudioContext||window.webkitAudioContext)(); }catch(e){} }
+    if(!AC) return;
+    this.ctx = AC;
+    if(!this.master){
+      this.master = this.ctx.createGain();
+      this.master.gain.value = 0.15;
+      this.master.connect(this.ctx.destination);
+    }
+    if(this.ctx.state === 'suspended') this.ctx.resume();
+    this.step = 0;
+    const loop = ()=>{ if(!this.on) return; this.scheduleStep(this.step); this.step = (this.step + 1) % MELODY.length; };
+    loop();
+    clearInterval(this.timer);
+    this.timer = setInterval(loop, this.stepDur * 1000);
+  },
+  stop(){ this.on = false; clearInterval(this.timer); },
+  scheduleStep(i){
+    const t = this.ctx.currentTime + 0.05;
+    const n = MELODY[i];
+    if(n !== '-') this.pluck(FREQ[n], t, 1.7, 0.5);
+    const b = BASS[i];
+    if(b !== '-') this.pad(FREQ[b], t, this.stepDur * 2.0, 0.35);
+  },
+  pluck(f, t, dur, vol){
+    const o = this.ctx.createOscillator(), g = this.ctx.createGain();
+    o.type = 'triangle'; o.frequency.value = f;
+    const o2 = this.ctx.createOscillator(); o2.type = 'sine'; o2.frequency.value = f*2;
+    const g2 = this.ctx.createGain(); g2.gain.value = 0.22;
+    g.gain.setValueAtTime(0.0001, t);
+    g.gain.linearRampToValueAtTime(vol, t+0.02);
+    g.gain.exponentialRampToValueAtTime(0.001, t+dur);
+    o.connect(g); g.connect(this.master);
+    o2.connect(g2); g2.connect(g);
+    o.start(t); o.stop(t+dur+0.05);
+    o2.start(t); o2.stop(t+dur+0.05);
+  },
+  pad(f, t, dur, vol){
+    const o = this.ctx.createOscillator(), g = this.ctx.createGain();
+    const lp = this.ctx.createBiquadFilter(); lp.type = 'lowpass'; lp.frequency.value = 820;
+    o.type = 'sine'; o.frequency.value = f;
+    g.gain.setValueAtTime(0.0001, t);
+    g.gain.linearRampToValueAtTime(vol, t+0.35);
+    g.gain.linearRampToValueAtTime(vol*0.7, t+dur*0.6);
+    g.gain.linearRampToValueAtTime(0.001, t+dur);
+    o.connect(lp); lp.connect(g); g.connect(this.master);
+    o.start(t); o.stop(t+dur+0.05);
+  },
+};
+
+function shuffle(a){ a = a.slice(); for(let i=a.length-1;i>0;i--){ const j=Math.floor(Math.random()*(i+1)); [a[i],a[j]]=[a[j],a[i]]; } return a; }
+function sample(arr, n, exclude){ const pool = arr.filter(x=>!exclude.includes(x)); return shuffle(pool).slice(0, n); }
+const rnd = (min,max) => Math.floor(Math.random()*(max-min+1))+min;
+
+createApp({
+  data(){ return {
+    act: 0,
+    maxAct: 1,
+    bookOpen: false,
+    actMenuOpen: false,
+    bgmOn: false,
+    actMeta: [
+      { t:'入號', en:'Entering' },
+      { t:'學藝', en:'Learning' },
+      { t:'開票', en:'Writing' },
+      { t:'驗票', en:'Cashing' },
+      { t:'辨偽', en:'The Forger' },
+      { t:'結業', en:'Graduation' },
+      { t:'迴響', en:'Epilogue' },
+    ],
+    // dialogue engine — a prologue scene before each act
+    phase: 'cover',           // 'cover' | 'dialog' | 'play'
+    dlgIdx: 0, dlgLines: [], shown: '', typingDone: false,
+    prologues: {
+      1: [
+        { who:'旁白', cn:'道光二十四年秋。我站在平遙城南的大門前，包袱裡是全部家當。', en:'Autumn, 1844. I stand before the southern gate of Pingyao, everything I own in one bundle.' },
+        { who:'我', cn:'（抬頭）……日昇昌。就是這兒了。', en:'(looking up) …Rishengchang. This is the place.' },
+        { who:'旁白', cn:'金匾下，掌柜撥著算盤，頭也沒抬。', en:'Beneath the gilded plaque, the master clicks his abacus, never once looking up.' },
+        { who:'大掌柜', cn:'想學開票？先學押字。寫錯一字，賠的是真金白銀。', en:'"You want to write drafts? First learn the cipher. One wrong character costs real silver."' },
+        { who:'大掌柜', cn:'怕不怕賠？', en:'Are you afraid?', choice:[
+          { label:'不怕', next:{ who:'我', cn:'不怕。信義比銀子重。', en:'No. Credit weighs more than silver.' } },
+          { label:'……有點怕', next:{ who:'我', cn:'（小聲）……有點怕。', en:'(quietly) …a little.' } },
+        ]},
+        { who:'大掌柜', cn:'好。跟進來——這屋裡，每一筆銀子，都靠一句話記著。', en:'Good. Come inside — in this house, every tael of silver is remembered by a single line of verse.' },
+      ],
+      2: [
+        { who:'大掌柜', cn:'把門關上。今日教你四句口訣——月、日、銀數、單位。', en:'Close the door. Today you learn four rhymes — month, day, sum, and unit.' },
+        { who:'大掌柜', cn:'這口訣，本是勸人向善的話，字字卻藏著數目。', en:'The rhymes read like moral counsel, but every character hides a number.' },
+        { who:'我', cn:'（默記）謹防假票冒取，勿忘細視書章……', en:'(memorizing) "Beware of forged drafts, look closely…"' },
+        { who:'大掌柜', cn:'背熟沒有？考考你。', en:'Got them by heart? Let me test you.' },
+      ],
+      3: [
+        { who:'旁白', cn:'晌午，綢緞莊的王掌櫃邁進櫃房，拱了拱手。', en:'Noon. Merchant Wang of the silk house steps in and cups his hands in greeting.' },
+        { who:'王掌柜', cn:'平遙匯京師，一筆紋銀，勞煩小師傅開票。', en:'"A remittance, Pingyao to Beijing. Young sir, draft me a ticket."' },
+        { who:'大掌柜', cn:'上手吧。把密押寫上。', en:'(to me) "You take this one. Write the cipher."' },
+      ],
+      4: [
+        { who:'旁白', cn:'一月之後，京師分號。櫃上來了位張客商。', en:'A month later, the Beijing branch. A merchant named Zhang arrives at the counter.' },
+        { who:'张客商', cn:'平遙日昇昌開的票，憑票兌銀。', en:'"A draft from Rishengchang, Pingyao. I am here to draw silver."' },
+        { who:'我', cn:'（心想）京平兩地，無電報可通，唯有密押為憑。', en:'(thinking) No telegraph links the two cities — only the cipher can prove it.' },
+      ],
+      5: [
+        { who:'旁白', cn:'打烊前一刻，油燈將盡。一個陌生客閃進櫃房，把票拍在櫃上。', en:'Just before closing, as the lamps burn low, a stranger slips in and slaps a draft on the counter.' },
+        { who:'陌生客', cn:'急兌！快給我銀子！', en:'"Cash it! Now! Give me my silver!"' },
+        { who:'我', cn:'（心想）這人眼神躲閃……先驗密押再說。', en:'(thinking) His eyes keep darting… verify the cipher first.' },
+      ],
+      6: [
+        { who:'旁白', cn:'三年磨墨，掌柜終於點頭。', en:'Three years of grinding ink — the master finally nods.' },
+        { who:'大掌柜', cn:'你識得真偽，當得櫃身。今日，賜你一方印。', en:'"You tell true from false — you have earned the counter. Today, a seal of your own."' },
+        { who:'大掌柜', cn:'從今往後，密押就是你的信義。', en:'"From now on, your cipher is your credit."' },
+      ],
+      7: [
+        { who:'大掌柜', cn:'你可想過，這小小密押，憑的什麼？', en:'"Have you ever wondered — what holds this little cipher together?"' },
+        { who:'旁白', cn:'一句話，兩座城，兩百年。', en:'One line of verse, two cities, two hundred years.' },
+      ],
+    },
+    // act 2
+    quiz: null, quizIdx: 0, quizChoice: null, quizFeedback: null, quizPassed: 0,
+    // act 3
+    order: { m:9, d:6, th:1, h:2, amount:1200 },
+    slots: [
+      { type:'month', label:'月 · Month',  hint:'which character in the month rhyme?' },
+      { type:'day',   label:'日 · Day',    hint:'which character in the day rhyme?' },
+      { type:'num',   label:'千位 · 1000s digit', hint:'digit in the number rhyme' },
+      { type:'unit',  label:'千位单位 · 1000s unit', hint:'which unit character means 1,000?' },
+      { type:'num',   label:'百位 · 100s digit',  hint:'digit in the number rhyme' },
+      { type:'unit',  label:'百位单位 · 100s unit',  hint:'which unit character means 100?' },
+    ],
+    values: ['', '', '', '', '', ''],
+    activeSlot: 0, wrongSlots: [], validated: false,
+    // act 4
+    decode: { claim:{}, cipher:[], qMonth:[], qDay:[], qAmt:[], m:null, d:null, amt:null },
+    decodeMsg: '', decodeOk: false,
+    // act 5
+    forge: { claim:{}, actual:{}, cipher:[], qAmt:[], guess:null },
+    forgeMsg: '', forgeOk: false, forgeExposed: false,
+    // act 6
+    playerName: '', gradStamped: false,
+  }},
+  computed: {
+    bgStyle(){
+      const map = {
+        0:"assets/img/scene-cover.png",
+        1:"assets/img/scene-counter.png",
+        2:"assets/img/scene-counter.png",
+        3:"assets/img/scene-counter.png",
+        4:"assets/img/scene-night.png",
+        5:"assets/img/scene-night.png",
+        6:"assets/img/scene-counter.png",
+        7:"assets/img/scene-cover.png",
+      };
+      return { backgroundImage:`url('${map[this.act]||map[0]}')` };
+    },
+    actTitle(){ return ['','入號','學藝','開票','驗票','辨偽','結業','迴響'][this.act] || ''; },
+    actTitleEn(){ return ['','Act I','Act II','Act III','Act IV','Act V','Act VI','Epilogue'][this.act] || ''; },
+    curLine(){ return this.dlgLines[this.dlgIdx] || {}; },
+    sceneLabel(){
+      const m = {
+        1:'道光二十四年 · 平遙 · 日昇昌',
+        2:'日昇昌 · 帳房',
+        3:'日昇昌 · 櫃房',
+        4:'京師分號 · 櫃上',
+        5:'京師分號 · 夜',
+        6:'日昇昌 · 內堂',
+        7:'日昇昌 · 門前',
+      };
+      return m[this.act] || '日昇昌 · 票號';
+    },
+    poemList(){
+      return [
+        { key:'month', cn:'月訣', en:'Months', sub:'month 1–12', chars:P_MONTH.split(''), vals:Array.from({length:12},(_,i)=>i+1) },
+        { key:'day',   cn:'日訣', en:'Days',   sub:'day 1–30',   chars:P_DAY.split(''),   vals:Array.from({length:30},(_,i)=>i+1) },
+        { key:'num',   cn:'數訣', en:'Digits', sub:'digit 1–10', chars:P_NUM.split(''),   vals:Array.from({length:10},(_,i)=>i+1) },
+        { key:'unit',  cn:'位訣', en:'Units',  sub:'万千百十',    chars:P_UNIT.split(''),  vals:[10000,1000,100,10] },
+      ];
+    },
+    palette(){
+      const s = this.slots[this.activeSlot];
+      if(!s) return [];
+      return { month:P_MONTH.split(''), day:P_DAY.split(''), num:P_NUM.split(''), unit:P_UNIT.split('') }[s.type];
+    },
+  },
+  methods: {
+    cn(n){
+      const d = '零一二三四五六七八九';
+      if(n < 10) return d[n];
+      if(n < 20) return '十' + (n === 10 ? '' : d[n-10]);
+      if(n < 30) return '二十' + (n === 20 ? '' : d[n-20]);
+      if(n < 40) return '三十' + (n === 30 ? '' : d[n-30]);
+      return String(n);
+    },
+    go(n){
+      sndPage();
+      clearInterval(this._typeTimer);
+      clearTimeout(this._auto);
+      this.act = n;
+      if(n > this.maxAct) this.maxAct = n;
+      this.animateAct();
+      if(n === 0){ this.phase = 'cover'; return; }
+      const lines = this.prologues[n];
+      if(lines && lines.length){
+        this.phase = 'dialog';
+        this.dlgLines = lines;
+        this.dlgIdx = 0;
+        this.shown = ''; this.typingDone = false;
+        this.$nextTick(()=> this.startTyping());
+      } else {
+        this.phase = 'play';
+        this.enterPlay(n);
+      }
+    },
+    enterPlay(n){
+      if(n === 2) this.buildQuiz();
+      if(n === 3) this.initAct3();
+      if(n === 4) this.initAct4();
+      if(n === 5) this.initAct5();
+    },
+    dlgEnd(){
+      if(this.act === 1){ this.go(2); }       // act 1 is pure story
+      else { this.phase = 'play'; this.enterPlay(this.act); }
+    },
+    jump(n){
+      if(n >= 1 && n <= this.maxAct){ this.actMenuOpen = false; this.go(n); }
+    },
+    autoNext(n, delay){
+      clearTimeout(this._auto);
+      this._auto = setTimeout(()=>{ if(this.act !== n) this.go(n); }, delay);
+    },
+    restart(){ location.reload(); },
+
+    startBgm(){ if(!this.bgmOn){ this.bgmOn = true; BGM.start(); } },
+    toggleBgm(){ this.bgmOn ? (this.bgmOn = false, BGM.stop()) : (this.bgmOn = true, BGM.start()); },
+
+    startGame(){
+      this.startBgm();
+      this.go(1);
+    },
+
+    /* ---------- dialogue engine (reused across acts) ---------- */
+    tagClass(who){
+      if(who === '大掌柜') return 'speaker-master';
+      if(who === '我') return 'speaker-me';
+      if(who === '旁白') return 'speaker-narr';
+      return 'speaker-guest';
+    },
+    tagText(who){
+      const map = {
+        '大掌柜':'大掌柜 · The Master', '我':'我 · Me', '旁白':'旁白 · Narration',
+        '王掌柜':'王掌柜 · Merchant Wang', '张客商':'張客商 · Merchant Zhang', '陌生客':'陌生客 · The Stranger',
+      };
+      return map[who] || who;
+    },
+    startTyping(){
+      clearInterval(this._typeTimer);
+      const line = this.curLine;
+      const full = line ? line.cn : '';
+      this.shown = ''; this.typingDone = false;
+      let i = 0;
+      this._typeTimer = setInterval(()=>{
+        i++;
+        this.shown = full.slice(0, i);
+        if(i >= full.length){ clearInterval(this._typeTimer); this.typingDone = true; }
+      }, 55);
+    },
+    finishTyping(){
+      clearInterval(this._typeTimer);
+      const line = this.curLine;
+      this.shown = line ? line.cn : '';
+      this.typingDone = true;
+    },
+    onDialogClick(){
+      const line = this.curLine;
+      if(!line) return;
+      if(line.choice) return;            // wait for explicit choice
+      if(!this.typingDone){ this.finishTyping(); return; }
+      if(this.dlgIdx < this.dlgLines.length-1){ this.dlgIdx++; this.startTyping(); sndPage(); }
+      else { this.dlgEnd(); }
+    },
+    chooseIntro(opt){
+      sndPage();
+      this.dlgLines.splice(this.dlgIdx + 1, 0, opt.next);
+      this.dlgIdx++;
+      this.startTyping();
+    },
+
+    /* ---------- ACT 2 ---------- */
+    buildQuiz(){
+      const m = rnd(1,12), d = rnd(1,30), n = rnd(1,9);
+      const mk = (q, a, pool) => ({ q, a, options: shuffle([a, ...sample(pool, 3, [a])]) });
+      this.quiz = [
+        mk(`Which character encodes ${m}月 (month ${m})?`, P_MONTH[m-1], P_MONTH.split('')),
+        mk(`Which character encodes day ${d}?`, P_DAY[d-1], P_DAY.split('')),
+        mk(`Which character encodes the digit ${n}?`, P_NUM[n-1], P_NUM.split('')),
+      ];
+      this.quizIdx = 0; this.quizChoice = null; this.quizFeedback = null; this.quizPassed = 0;
+    },
+    highlight(k,i){
+      if(!this.quiz) return false;
+      const q = this.quiz[this.quizIdx]; if(!q) return false;
+      const keyMap = {month:0, day:1, num:2, unit:3};
+      return keyMap[k] === this.quizIdx && this.poemList[keyMap[k]].chars[i] === q.a && this.quizChoice !== null;
+    },
+    answerQuiz(o){
+      this.quizChoice = o;
+      const q = this.quiz[this.quizIdx];
+      if(o === q.a){ this.quizFeedback = {ok:true}; sndOk();
+        this.quizPassed++;
+        setTimeout(()=>{ this.quizChoice=null; this.quizFeedback=null;
+          if(this.quizIdx < this.quiz.length-1) this.quizIdx++;
+          else this.autoNext(3, 1500); }, 900);
+      } else { this.quizFeedback = {ok:false}; sndErr(); }
+    },
+
+    /* ---------- ACT 3 ---------- */
+    initAct3(){
+      this.order = { m: rnd(1,12), d: rnd(1,30), th: rnd(1,9), h: rnd(1,9) };
+      this.order.amount = this.order.th*1000 + this.order.h*100;
+      this.values = ['', '', '', '', '', ''];
+      this.activeSlot = 0; this.wrongSlots = []; this.validated = false;
+    },
+    paletteIdx(i){
+      const t = this.slots[this.activeSlot]?.type;
+      return t === 'unit' ? ['萬','千','百','十'][i] : String(i+1);
+    },
+    pickChar(c){
+      if(this.validated) return;
+      sndPage();
+      this.values[this.activeSlot] = c;
+      const next = this.values.findIndex(v=>!v);
+      this.activeSlot = next === -1 ? this.values.length-1 : next;
+    },
+    clearSlot(i){
+      if(this.validated || !this.values[i]) return;
+      this.values[i] = ''; this.activeSlot = i;
+    },
+    ticketAnswer(){
+      const o = this.order;
+      return [ P_MONTH[o.m-1], P_DAY[o.d-1], P_NUM[o.th-1], '宝', P_NUM[o.h-1], '流' ];
+    },
+    submitTicket(){
+      const ans = this.ticketAnswer();
+      const wrong = [];
+      this.values.forEach((v,i)=>{ if(v !== ans[i]) wrong.push(i); });
+      if(wrong.length === 0){
+        this.validated = true; this.wrongSlots = []; sndOk();
+        this.$nextTick(()=> this.stamp('stampA', '票號之印'));
+        this.autoNext(4, 2600);
+      } else {
+        this.wrongSlots = wrong; sndErr();
+        setTimeout(()=>{ wrong.forEach(i=> this.values[i]=''); this.activeSlot = wrong[0]; this.wrongSlots = []; }, 900);
+      }
+    },
+
+    /* ---------- ACT 4 ---------- */
+    initAct4(){
+      const m = rnd(1,12), d = rnd(1,30), th = rnd(1,9), h = rnd(1,9);
+      const amount = th*1000 + h*100;
+      const cipher = [ P_MONTH[m-1], P_DAY[d-1], P_NUM[th-1], '宝', P_NUM[h-1], '流' ];
+      const wrongAmts = sample([1200,2300,3400,4500,5600,6700,7800,8900,9100,1300,2400,3500].filter(x=>x!==amount), 3, [amount]);
+      this.decode = {
+        claim: { cn:`${this.cn(m)}月${this.cn(d)}日 · ${this.cn(th)}千${this.cn(h)}百兩`, en:`month ${m}, day ${d}, ${amount} taels`, m, d, amount },
+        cipher,
+        qMonth: shuffle([m, ...sample(Array.from({length:12},(_,i)=>i+1), 3, [m])]),
+        qDay:   shuffle([d, ...sample(Array.from({length:30},(_,i)=>i+1), 3, [d])]),
+        qAmt:   shuffle([amount, ...wrongAmts]),
+        m:null, d:null, amt:null,
+      };
+      this.decodeMsg=''; this.decodeOk=false;
+    },
+    checkDecode(){
+      const c = this.decode.claim;
+      if(this.decode.m === c.m && this.decode.d === c.d && this.decode.amt === c.amount){
+        this.decodeMsg = '密押相符，分毫不差——付銀！The cipher matches the claim. Genuine. Pay the silver.';
+        this.decodeOk = true; sndOk();
+        this.$nextTick(()=> this.stamp('stampB', '兌訖'));
+        this.autoNext(5, 2800);
+      } else {
+        this.decodeMsg = '密押不合……再核對口诀冊。Mismatch — decode again with the book.';
+        this.decodeOk = false; sndErr();
+      }
+    },
+
+    /* ---------- ACT 5 ---------- */
+    initAct5(){
+      const m = 3, d = 11, th = 7, h = 8;              // what the cipher truly encodes
+      const claimTh = 4, claimH = 5;                    // what the tampered plain text claims
+      const cipher = [ P_MONTH[m-1], P_DAY[d-1], P_NUM[th-1], '宝', P_NUM[h-1], '流' ];
+      this.forge = {
+        claim:  { cn:`${this.cn(claimTh)}千${this.cn(claimH)}百兩`, en:`${claimTh*1000+claimH*100} taels (4,500)` },
+        actual: { cn:`${this.cn(th)}千${this.cn(h)}百兩`, en:`${th*1000+h*100} taels (7,800)` },
+        cipher,
+        qAmt: shuffle([4500, 7800, 3200, 5600]),
+        guess: null,
+      };
+      this.forgeMsg=''; this.forgeOk=false; this.forgeExposed=false;
+    },
+    checkForge(guess){
+      this.forge.guess = guess;
+      if(guess === 7800){
+        this.forgeOk = true;
+        this.forgeMsg = '正是——密押實為七千八百兩。The cipher truly reads 7,800 taels.';
+        sndOk();
+      } else {
+        this.forgeOk = false;
+        this.forgeMsg = '不對，再查數訣與位訣。Not quite — check the digit & unit rhymes.';
+        sndErr();
+      }
+    },
+    exposeForge(){
+      this.forgeExposed = true;
+      this.$nextTick(()=> this.stamp('stampC', '偽'));
+      this.autoNext(6, 3400);
+    },
+
+    /* ---------- ACT 6 ---------- */
+    doGraduate(){
+      this.gradStamped = true; sndStamp();
+      this.$nextTick(()=> this.stamp('stampD', '之印'));
+      this.autoNext(7, 3200);
+    },
+
+    /* ---------- stamps & transitions ---------- */
+    fitCover(){
+      const wrap = this.$refs.scrollWrap;
+      if(!wrap || this.act !== 0) return;
+      const scale = Math.min(1, (window.innerHeight - 20) / Math.max(wrap.offsetHeight, 1));
+      gsap.set(wrap, { transformOrigin:'center center', scale });
+    },
+    stamp(ref, label){
+      const el = this.$refs[ref];
+      if(!el) return;
+      sndStamp();
+      gsap.fromTo(el, { scale:2.6, opacity:0, rotate:-30 },
+        { scale:1, opacity:1, rotate:-14, duration:.45, ease:'power4.in',
+          onComplete:()=> gsap.fromTo(el, { x:-3 }, { x:0, duration:.3, ease:'elastic.out(1,0.3)' }) });
+    },
+    animateAct(){
+      this.$nextTick(()=>{
+        if(this.$refs.bgEl) gsap.fromTo(this.$refs.bgEl, { scale:1.06 }, { scale:1, duration:2.2, ease:'power2.out' });
+        const els = this.$el.querySelectorAll('[data-anim]');
+        if(els.length) gsap.fromTo(els, { y:26, opacity:0 }, { y:0, opacity:1, stagger:.1, duration:.7, ease:'power3.out', overwrite:true });
+        const seal = this.$refs.coverSeal;
+        if(this.act===0 && seal){ /* handled in mounted */ }
+      });
+    },
+  },
+  watch: {
+    forge: {
+      handler(f){ if(f.guess !== null && !this.forgeOk) this.checkForge(f.guess); },
+      deep: true,
+    },
+  },
+  mounted(){
+    window.__game = this; // debug / test hook
+    window.addEventListener('resize', this.fitCover);
+    // cover unfurl
+    this.fitCover();
+    const wrap = this.$refs.scrollWrap;
+    const tl = gsap.timeline({ delay:.3 });
+    if(wrap){
+      tl.to(wrap, { clipPath:'inset(0% 0% 0% 0%)', duration:1.5, ease:'power2.inOut' });
+    }
+    this.$nextTick(()=>{
+      if(this.$refs.coverSub){
+        tl.to(this.$refs.coverSub, { opacity:1, duration:.8 }, '-=.3');
+        tl.fromTo(this.$refs.coverSub, { y:16 }, { y:0, duration:.8, ease:'power3.out' }, '<');
+      }
+      if(this.$refs.coverSeal){
+        tl.to(this.$refs.coverSeal, { opacity:1, duration:.4 });
+        tl.fromTo(this.$refs.coverSeal, { scale:2.4, rotate:-30 }, { scale:1, rotate:-8, duration:.4, ease:'power4.in' }, '<');
+      }
+      if(this.$refs.bgEl) gsap.to(this.$refs.bgEl, { scale:1.08, duration:14, yoyo:true, repeat:-1, ease:'sine.inOut' });
+    });
+  },
+}).mount('#app');
+</script>
+</body>
+</html>
